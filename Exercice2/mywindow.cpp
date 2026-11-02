@@ -130,18 +130,73 @@ void MyWindow::on_pushButtonLogin_clicked()
 {
   // Récupération nom et mot de passe
   char nom[20],motDePasse[20];
-  int nouvelUtilisateur;
+  int nouvelUtilisateur, position, res;
   strcpy(nom,getNom());
   strcpy(motDePasse,getMotDePasse());
   nouvelUtilisateur = isNouveauChecked();
 
+  if(nouvelUtilisateur == 1)
+  {
+    if((position = estPresent(nom)) > 0)
+    {
+      setResultat("Utilisateur déjà existant !");
+    }
+    else
+      if(position == -1 || position == 0)
+      {
+        ajouteUtilisateur(nom, motDePasse);
+        setResultat("nouvel utilisateur créé : bienvenue !");
+      }
+  }
+  else
+  {
+    if((position = estPresent(nom)) == 0)
+    {
+      setResultat("Utilisateur inconnu...");
+    }
+    else
+    {
+      if((res = verifieMotDePasse(position, motDePasse)) == 0)
+      {
+        setResultat("Mot de passe incorrect...");
+      }
+      else
+      {
+        if(res == -1)
+        {
+          setResultat("Erreur.");
+        }
+        else
+        {
+          setResultat("Re-bonjour cher utilisateur !");
+        }
+      }
+    }
+  }
+
   // TO DO
   printf("Clic sur bouton LOGIN : --%s--%s--%d--\n",nom,motDePasse,nouvelUtilisateur);
+  return;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void MyWindow::on_pushButtonAfficheFichier_clicked()
 {
+  UTILISATEUR liste[50];
+  int nbrUti, i;
+
+  videTableUtilisateurs();
+  nbrUti = listeUtilisateurs(liste);
+
+  if(nbrUti > 0)
+  {
+    for(i = 0; i< nbrUti; i++)
+    {
+      ajouteTupleTableUtilisateurs(liste[i].nom, liste[i].hash);
+    }
+  }
+
   // TO DO
   printf("Clic sur bouton AFFICHER\n");
+  return;
 }
