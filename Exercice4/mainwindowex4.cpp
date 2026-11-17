@@ -1,10 +1,16 @@
 #include "mainwindowex4.h"
 #include "ui_mainwindowex4.h"
 
+#include <signal.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <fcntl.h> 
+
+
 extern MainWindowEx4 *w;
 
 int idFils1, idFils2, idFils3;
-// TO DO : HandlerSIGCHLD
+void HandlerSIGCHLD(int sig);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -15,7 +21,16 @@ MainWindowEx4::MainWindowEx4(QWidget *parent):QMainWindow(parent),ui(new Ui::Mai
   ui->pushButtonAnnulerTous->setVisible(false);
 
   // armement de SIGCHLD
-  // TO DO
+  struct sigaction A;
+  A.sa_handler = HandlerSIGCHLD;
+  sigemptyset(&A.sa_mask);
+  A.sa_flags = 0;
+
+  if(sigaction(SIGCHLD, &A, NULL) == -1)
+  {
+    perror("Erreur de sigaction\n");
+    exit(1);
+  }
 }
 
 MainWindowEx4::~MainWindowEx4()
@@ -149,37 +164,132 @@ const char* MainWindowEx4::getGroupe3()
 void MainWindowEx4::on_pushButtonDemarrerTraitements_clicked()
 {
   fprintf(stderr,"Clic sur le bouton Demarrer Traitements\n");
-  // TO DO
+  
+  const char *nomGrp1, *nomGrp2, *nomGrp3;
+
+  int fd = open("Trace.log", O_WRONLY | O_CREAT | O_APPEND, 0644);
+  if(fd < 0)
+  {
+    perror("Erreur lors de l'ouverture du fichier Trace.log\n");
+  }
+  else
+  {
+    dup2(fd, STDERR_FILENO);
+    ::close(fd);
+
+
+    if(traitement1Selectionne())
+    {
+      if((nomGrp1 = getGroupe1()) == NULL)
+      {
+        fprintf(stderr, "Erreur : Auncun groupe saisi pour le 1.\n");
+      }
+      else
+      {
+        if((idFils1 = fork()) < 0)
+        {
+          perror("Erreur lors du fork fils 1.\n");
+        }
+        else
+        {
+          if(idFils1 == 0)
+          {
+            execl("./Traitement", "Traitement", nomGrp1, "200", NULL);
+
+            perror("Erreur de l'execl <Traitement> du fils 1.\n");
+            exit(1);
+          }
+        }
+      }
+    }
+
+    if(traitement2Selectionne())
+    {
+      if((nomGrp2 = getGroupe2()) == NULL)
+        fprintf(stderr,"Erreur : Auncun groupe saisi pour le 2.\n");
+      else
+      {
+        if((idFils2 = fork()) < 0)
+          perror("Erreur lors du fork fils 2\n");
+        else
+        {
+          if(idFils2 == 0)
+          {
+            execl("./Traitement", "Traitement", nomGrp2, "450", NULL);
+
+            perror("Erreur de l'execl <Traitement> du fils 2\n");
+            exit(1);
+          }
+        }
+      }
+    }
+
+    if(traitement3Selectionne())
+    {
+      if((nomGrp3 = getGroupe3()) == NULL)
+        fprintf(stderr, "Erreur : Auncun groupe saisi pour le 3.\n");
+      else
+      {
+        if((idFils3 = fork()) < 0)
+          perror("Erreur lors du fork fils 3.\n");
+        else
+        {
+          if(idFils3 == 0)
+          {
+            execl("./Traitement", "Traitement", nomGrp3, "700", NULL);
+
+            perror("Erreur de l'execl <Traitement> du fils 3.\n");
+            exit(1);
+          }
+        }
+      }    
+    }
+  }
 }
 
 void MainWindowEx4::on_pushButtonVider_clicked()
 {
   fprintf(stderr,"Clic sur le bouton Vider\n");
-  // TO DO
+  ui->lineEditGroupe1->clear();
+  ui->lineEditGroupe2->clear();
+  ui->lineEditGroupe3->clear();
+
+  ui->lineEditResultat1->clear();
+  ui->lineEditResultat2->clear();
+  ui->lineEditResultat3->clear();
 }
 
 void MainWindowEx4::on_pushButtonQuitter_clicked()
 {
   fprintf(stderr,"Clic sur le bouton Quitter\n");
-  // TO DO
+  qApp->quit();
 }
 
 void MainWindowEx4::on_pushButtonAnnuler1_clicked()
 {
   fprintf(stderr,"Clic sur le bouton Annuler1\n");
-  // TO DO
+  if(idFils1 > 0)
+  {
+    kill(idFils1, SIGUSR1);
+  }
 }
 
 void MainWindowEx4::on_pushButtonAnnuler2_clicked()
 {
   fprintf(stderr,"Clic sur le bouton Annuler2\n");
-  // TO DO
+  if(idFils2 > 0)
+  {
+    kill(idFils2, SIGUSR1);
+  }
 }
 
 void MainWindowEx4::on_pushButtonAnnuler3_clicked()
 {
   fprintf(stderr,"Clic sur le bouton Annuler3\n");
-  // TO DO
+  if(idFils3 > 0)
+  {
+    kill(idFils3, SIGUSR1);
+  }
 }
 
 void MainWindowEx4::on_pushButtonAnnulerTous_clicked()
@@ -192,4 +302,37 @@ void MainWindowEx4::on_pushButtonAnnulerTous_clicked()
 /////// Handlers de signaux //////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// TO DO : HandlerSIGCHLD
+void HandlerSIGCHLD(int sig)
+{
+  (void)sig;
+  int id, status;
+
+  id = wait(&status);
+
+  if(id != -1 && WIFEXITED(status))
+  {
+    int resultat = WEXITSTATUS(status);
+
+    if(id == idFils1)
+    {
+      w->setResultat1(resultat);
+      idFils1 = 0;
+    }
+    else
+    {
+      if(id == idFils2)
+      {
+        w->setResultat2(resultat);
+        idFils2 = 0;
+      }
+      else
+      {
+        if(id == idFils3)
+        {
+          w->setResultat3(resultat);
+          idFils3 = 0;
+        }
+      }
+    }
+  }
+}

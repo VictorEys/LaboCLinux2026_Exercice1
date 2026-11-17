@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <mysql.h>
 
+
 extern char groupe[30];
 extern int  position;
 extern MainWindowTraitement* w;
@@ -13,7 +14,7 @@ MYSQL_RES  *resultat;
 MYSQL_ROW  tuple;
 
 void handlerSIGALRM(int sig);
-// TO DO : HandlerSIGUSR1
+void handlerSIGUSR1(int sig);
 
 int  compteur = 0;
 
@@ -44,7 +45,16 @@ MainWindowTraitement::MainWindowTraitement(QWidget *parent):QMainWindow(parent),
   sigaction(SIGALRM,&A,NULL);
 
   // armement de SIGUSR1
-  // TO DO
+  struct sigaction B;
+  B.sa_handler = handlerSIGUSR1;
+  sigemptyset(&B.sa_mask);
+  B.sa_flags = 0;
+
+  if(sigaction(SIGUSR1, &B, NULL) == -1)
+  {
+    perror("Erreur de sigaction\n");
+    exit(1);
+  }
 
   // Demande d'envoi de SIGALRM dans 1 seconde
   alarm(1); 
@@ -101,4 +111,9 @@ void handlerSIGALRM(int sig)
   alarm(1);
 }
 
-//TO DO : HandlerSIGUSR1
+void handlerSIGUSR1(int sig)
+{
+  fprintf(stderr, "(Traitement %d) Reception du signal SIGUSR1 (%d)\n", getpid(), sig);
+  exit(compteur);
+
+}

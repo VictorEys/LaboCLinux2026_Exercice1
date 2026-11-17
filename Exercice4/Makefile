@@ -30,7 +30,7 @@ maintraitement.o: maintraitement.cpp
 	$(CXX) -c $(CXXFLAGS) -o maintraitement.o maintraitement.cpp
 
 mainwindowtraitement.o: mainwindowtraitement.cpp
-	$(CXX) -c $(CXXFLAGS) -I/usr/include/mysql -m64 -o mainwindowtraitement.o mainwindowmainwindowtraitement.cpp
+	$(CXX) -c $(CXXFLAGS) -I/usr/include/mysql -m64 -o mainwindowtraitement.o mainwindowtraitement.cpp
 
 moc_mainwindowtraitement.o: moc_mainwindowtraitement.cpp
 	$(CXX) -c $(CXXFLAGS) -o moc_mainwindowtraitement.o moc_mainwindowtraitement.cpp
