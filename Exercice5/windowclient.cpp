@@ -14,8 +14,10 @@ extern WindowClient *w;
 #include "protocole.h" // contient la cle et la structure d'un message
 
 extern char nomClient[40];
-int idQ; // identifiant de la file de message
+int idQ = -1; // identifiant de la file de message
 
+
+void handlerSIGUSR1(int sig);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -26,13 +28,20 @@ WindowClient::WindowClient(QWidget *parent):QMainWindow(parent),ui(new Ui::Windo
 
   // Recuperation de l'identifiant de la file de messages
   fprintf(stderr,"(CLIENT %s %d) Recuperation de l'id de la file de messages\n",nomClient,getpid());
-  // TO DO (etape 2)
+  while(idQ == -1)
+  {
+    idQ = msgget(CLE, 0);
+    fprintf(stderr, "Recherche.\n");
+    sleep(1);
+  }
+  fprintf(stderr, "Connexion établie.\n");
 
   // Envoi d'une requete d'identification
   // TO DO (etape 5)
 
   // Armement du signal SIGUSR1
   // TO DO (etape 4)
+  signal(SIGUSR1, handlerSIGUSR1);
 }
 
 WindowClient::~WindowClient()
@@ -92,6 +101,17 @@ void WindowClient::on_pushButtonEnvoyer_clicked()
 {
   fprintf(stderr,"Clic sur le bouton Envoyer\n");
   // TO DO (etapes 2, 3, 4)
+
+  MESSAGE m;
+  m.type = 1;
+  m.expediteur = getpid();
+  strcpy(m.texte, getAEnvoyer());
+
+  if((msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0) == -1))
+  {
+    perror("Erreur de msgsnd.\n");
+    exit(1);
+  }
 }
 
 void WindowClient::on_pushButtonQuitter_clicked()
@@ -104,3 +124,15 @@ void WindowClient::on_pushButtonQuitter_clicked()
 ///// Handlers de signaux ////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // TO DO (etape 4)
+void handlerSIGUSR1(int signal)
+{
+  MESSAGE mTmp;
+
+  if(msgrcv(idQ, &mTmp, sizeof(MESSAGE)-sizeof(long), getpid(), 0) == -1)
+  {
+    perror("Erreur de msgrcv.\n");
+    exit(1);
+  }
+
+  w->setRecu(mTmp.texte);
+}
