@@ -25,6 +25,7 @@ WindowClient::WindowClient(QWidget *parent):QMainWindow(parent),ui(new Ui::Windo
 {
   ui->setupUi(this);
   setWindowTitle(nomClient);
+  MESSAGE mConnec;
 
   // Recuperation de l'identifiant de la file de messages
   fprintf(stderr,"(CLIENT %s %d) Recuperation de l'id de la file de messages\n",nomClient,getpid());
@@ -38,6 +39,13 @@ WindowClient::WindowClient(QWidget *parent):QMainWindow(parent),ui(new Ui::Windo
 
   // Envoi d'une requete d'identification
   // TO DO (etape 5)
+  mConnec.type = 1;
+  mConnec.expediteur = getpid();
+  if(msgsnd(idQ, &mConnec, sizeof(MESSAGE)-sizeof(long), 0) == -1)
+  {
+    perror("Erreur de msgsnd Connec.\n");
+    exit(1);
+  }
 
   // Armement du signal SIGUSR1
   // TO DO (etape 4)
@@ -124,7 +132,7 @@ void WindowClient::on_pushButtonQuitter_clicked()
 ///// Handlers de signaux ////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // TO DO (etape 4)
-void handlerSIGUSR1(int signal)
+void handlerSIGUSR1(int)
 {
   MESSAGE mTmp;
 

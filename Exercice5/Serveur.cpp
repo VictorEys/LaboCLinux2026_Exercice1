@@ -10,6 +10,8 @@
 int idQ;
 int pid1,pid2;
 
+void handlerSIGINT(int sig);
+
 int main()
 {
   MESSAGE requete;
@@ -17,19 +19,49 @@ int main()
 
   // Armement du signal SIGINT
   // TO DO (etape 6)
+  signal(SIGINT, handlerSIGINT);
 
   // Creation de la file de message
   fprintf(stderr,"(SERVEUR) Creation de la file de messages\n");
   if((idQ = msgget(CLE, IPC_CREAT | IPC_EXCL | 0600)) == -1)
   {
-    perror("Erreur de msgget");
+    perror("Erreur de msgget\n");
   }
 
   // Attente de connection de 2 clients
   fprintf(stderr,"(SERVEUR) Attente de connection d'un premier client...\n");
   // TO DO (etape 5)
+  if(msgrcv(idQ, &requete, sizeof(MESSAGE)-sizeof(long), 1, 0) == -1)
+  {
+    perror("Erreur de msgrcv\n");
+    exit(1);
+  }
+  pid1 = requete.expediteur;
+  fprintf(stderr, "Premier Client connecté.\n");
+
+
   fprintf(stderr,"(SERVEUR) Attente de connection d'un second client...\n");
   // TO DO (etape 5)
+  if(msgrcv(idQ, &requete, sizeof(MESSAGE)-sizeof(long), 1, 0) == -1)
+  {
+    perror("Erreur de msgrcv\n");
+    exit(1);
+  }
+
+  if(requete.expediteur == pid1)
+  {
+    while(requete.expediteur == pid1)
+    {
+      if(msgrcv(idQ, &requete, sizeof(MESSAGE)-sizeof(long), 1, 0) == -1)
+      {
+        perror("Erreur de msgrcv\n");
+        exit(1);
+      }
+    }
+  }
+
+  pid2 = requete.expediteur;
+  fprintf(stderr, "Deuxième Client connecté.\n");
 
   while(1) 
   {
@@ -48,15 +80,32 @@ int main()
     strcpy(requete.texte, temp);
     fprintf(stderr, "APRES MODIFICATION : %s\n", requete.texte);
 
-    destinataire = requete.expediteur;
-    requete.type = destinataire;
-    fprintf(stderr,"(SERVEUR) Envoi de la reponse a %d\n",destinataire);
-    if((msgsnd(idQ, &requete, sizeof(MESSAGE)-sizeof(long), 0)) == -1)
-    {
-      perror("Erreur de msgsnd SERVEUR\n");
-    }
 
-    kill(destinataire, SIGUSR1);
+
+    if(requete.expediteur == pid1)
+    {
+      destinataire = pid2;
+      requete.type = destinataire;
+      fprintf(stderr,"(SERVEUR) Envoi de la reponse a %d\n",destinataire);
+      if((msgsnd(idQ, &requete, sizeof(MESSAGE)-sizeof(long), 0)) == -1)
+      {
+        perror("Erreur de msgsnd SERVEUR\n");
+      }
+
+      kill(destinataire, SIGUSR1);
+    }
+    else
+    {
+      destinataire = pid1;
+      requete.type = destinataire;
+      fprintf(stderr,"(SERVEUR) Envoi de la reponse a %d\n",destinataire);
+      if((msgsnd(idQ, &requete, sizeof(MESSAGE)-sizeof(long), 0)) == -1)
+      {
+        perror("Erreur de msgsnd SERVEUR\n");
+      }
+
+      kill(destinataire, SIGUSR1);
+    }
   }
 }
 
@@ -64,3 +113,13 @@ int main()
 ///// Handlers de signaux ////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // TO DO (etape 6)
+void handlerSIGINT(int)
+{
+  fprintf(stderr, "Fermeture Serveur.\n");
+  if((msgctl(idQ, IPC_RMID, NULL)) == -1)
+  {
+    perror("Erreur de msgctl 'Arret Serveru'.\n");
+  }
+
+  exit(0);
+}
